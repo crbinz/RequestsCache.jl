@@ -68,7 +68,6 @@ module RequestsCache
         cached_response = CachedResponseStream(UTCnow(), response)
         if backend == "jld"
             jldopen(filename, "w") do file
-                println("Write $cached_response with key='$key' to '$filename'")
                 write(file, key, cached_response)
             end
         else
@@ -84,7 +83,6 @@ module RequestsCache
         cached_response = CachedResponse(UTCnow(), response)
         if backend == "jld"
             jldopen(filename, "w") do file
-                println("Write $cached_response with key='$key' to '$filename'")
                 write(file, key, cached_response)
             end
         else
@@ -98,7 +96,6 @@ module RequestsCache
         key = string(hash(prepared_query))
         if backend == "jld"
             retrieved_response = jldopen(filename, "r") do file
-                println("Read key='$key' from '$filename'")
                 read(file, key)
             end
             return retrieved_response
@@ -119,7 +116,6 @@ module RequestsCache
     end
 
     function execute_remote(prepared_query::PreparedQuery)
-        println("execute_remote $(prepared_query.verb) $(prepared_query.uri) $(prepared_query.args)")
         verb = uppercase(string(prepared_query.verb))
         if !contains(verb, "_STREAMING")
             do_request(prepared_query.uri, verb; prepared_query.args...)
@@ -129,15 +125,12 @@ module RequestsCache
     end
 
     function execute_local(session::CachedSessionType, prepared_query::PreparedQuery, overwrite::Bool)
-        println("execute_local")
         if checkcache(session,prepared_query)
             retrieved_response = read(session, prepared_query)
             dt_expiration = retrieved_response.dt_stored + session.expire_after
             if dt_expiration > UTCnow() && !overwrite
-                println("Not expired")
                 return retrieved_response.response
             else
-                println("Cache expired - update is necessary")
                 response = execute_remote(prepared_query)
                 write(session, prepared_query, response)
                 return response
@@ -145,13 +138,11 @@ module RequestsCache
         else
             response = execute_remote(prepared_query)
             write(session, prepared_query, response)
-            println("Write to $session")
             return response
         end
     end
 
     function execute(prepared_query::PreparedQuery; session=Session(), overwrite = false)
-        println(session)
         if session.backend == ""
             execute_remote(prepared_query)
         else
@@ -168,16 +159,14 @@ module RequestsCache
         f_str = uppercase(string(f))
         @eval begin
             function ($f)(session::CachedSessionType, uri::URI, data::String; headers::Dict=Dict(), overwrite = false)
-                #do_request(uri, $f_str; data=data, headers=headers)
                 prepared_query = create_query($f_str, uri; data=data, headers=headers)
-                response = execute(prepared_query; session=session, overwrite = overwrite)
+                execute(prepared_query; session=session, overwrite = overwrite)
             end
 
             ($f)(session::CachedSessionType, uri::String; args...) = ($f)(session, URI(uri);  args...)
             function ($f)(session::CachedSessionType, uri::URI; overwrite = false, args...)
-                #do_request(uri, $f_str; args...)
                 prepared_query = create_query($f_str, uri;  args...)
-                response = execute(prepared_query; session=session, overwrite = overwrite)
+                execute(prepared_query; session=session, overwrite = overwrite)
             end
         end
     end
