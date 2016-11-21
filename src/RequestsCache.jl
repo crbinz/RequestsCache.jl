@@ -67,7 +67,7 @@ module RequestsCache
         key = string(hash(prepared_query))
         cached_response = CachedResponseStream(UTCnow(), response)
         if backend == "jld"
-            jldopen(filename, "w") do file
+            jldopen(filename, "r+") do file
                 println("Write $cached_response with key='$key' to '$filename'")
                 write(file, key, cached_response)
             end
@@ -83,7 +83,7 @@ module RequestsCache
         key = string(hash(prepared_query))
         cached_response = CachedResponse(UTCnow(), response)
         if backend == "jld"
-            jldopen(filename, "w") do file
+            jldopen(filename, "r+") do file
                 println("Write $cached_response with key='$key' to '$filename'")
                 write(file, key, cached_response)
             end
